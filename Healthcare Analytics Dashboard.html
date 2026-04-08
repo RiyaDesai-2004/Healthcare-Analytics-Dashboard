@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@200;300;400;600;700&display=swap');
+
+  :root {
+    --bg-deep: #020b18;
+    --bg-panel: #040f1e;
+    --bg-card: #061525;
+    --bg-card2: #071a2d;
+    --accent-cyan: #00e5ff;
+    --accent-teal: #00bcd4;
+    --accent-green: #00ff88;
+    --accent-amber: #ffab00;
+    --accent-red: #ff4444;
+    --accent-purple: #b47cff;
+    --accent-pink: #ff6eb4;
+    --grid-line: rgba(0,229,255,0.06);
+    --border-glow: rgba(0,229,255,0.18);
+    --text-main: #e0f4ff;
+    --text-dim: #5a8aaa;
+    --text-mid: #8bbdd6;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg-deep);
+    font-family: 'Exo 2', sans-serif;
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0,100,150,0.18) 0%, transparent 70%),
+      linear-gradient(180deg, rgba(0,20,40,0.8) 0%, transparent 100%);
+  }
+
+  /* Animated scanlines */
+  body::before {
+    content:'';
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events:none;
+    z-index:1000;
+  }
+
+  /* TOP HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: linear-gradient(90deg, rgba(0,229,255,0.05), transparent 60%);
+    border-bottom: 1px solid var(--border-glow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-pulse {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-cyan);
+    display: flex; align-items:center; justify-content:center;
+    box-shadow: 0 0 20px rgba(0,229,255,0.4);
+    animation: pulse 2s infinite;
+    font-size: 18px;
+  }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 20px rgba(0,229,255,0.4); }
+    50% { box-shadow: 0 0 35px rgba(0,229,255,0.8), 0 0 60px rgba(0,229,255,0.3); }
+  }
+
+  .header-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--accent-cyan), #80efff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-sub {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .live-indicator {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-green);
+    letter-spacing: 2px;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--accent-green);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent-green);
+    animation: blink 1.2s infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .header-stat {
+    text-align: center;
+  }
+
+  .header-stat-val {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    line-height: 1;
+  }
+
+  .header-stat-lbl {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .divider-v {
+    width: 1px; height: 36px;
+    background: var(--border-glow);
+  }
+
+  /* MAIN GRID */
+  .main {
+    padding: 20px 24px;
+    display: grid;
+    gap: 16px;
+  }
+
+  /* KPI ROW */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+  }
+
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
+    padding: 16px 14px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+    cursor: default;
+  }
+
+  .kpi-card::before {
+    content:'';
+    position:absolute;
+    top:0; left:0; right:0;
+    height: 2px;
+    background: var(--kpi-color, var(--accent-cyan));
+    box-shadow: 0 0 10px var(--kpi-color, var(--accent-cyan));
+  }
+
+  .kpi-card::after {
+    content:'';
+    position:absolute;
+    bottom:0; right:0;
+    width:60px; height:60px;
+    background: radial-gradient(circle, var(--kpi-color, var(--accent-cyan)) 0%, transparent 70%);
+    opacity: 0.07;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--kpi-color, var(--accent-cyan));
+  }
+
+  .kpi-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .kpi-val {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--kpi-color, var(--accent-cyan));
+    text-shadow: 0 0 20px var(--kpi-color, var(--accent-cyan));
+    margin-bottom: 4px;
+  }
+
+  .kpi-lbl {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* CHART GRID */
+  .charts-row-1 {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .charts-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .charts-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content:'';
+    position:absolute;
+    top:0; left:0; right:0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    opacity: 0.4;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .panel-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-mid);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 8px var(--accent-cyan);
+  }
+
+  .panel-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--accent-amber);
+    letter-spacing: 1px;
+    background: rgba(255,171,0,0.1);
+    border: 1px solid rgba(255,171,0,0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  canvas {
+    max-height: 220px;
+  }
+
+  .big-canvas {
+    max-height: 240px !important;
+  }
+
+  /* Progress bars */
+  .progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .progress-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .progress-name {
+    font-size: 11px;
+    color: var(--text-mid);
+    letter-spacing: 1px;
+  }
+
+  .progress-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-cyan);
+  }
+
+  .progress-bar-track {
+    height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1.5s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
+  }
+
+  .progress-bar-fill::after {
+    content:'';
+    position:absolute;
+    top:0; right:0;
+    width:8px; height:100%;
+    background: rgba(255,255,255,0.5);
+    border-radius:3px;
+    filter: blur(2px);
+  }
+
+  /* Donut center text */
+  .donut-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Grid lines background */
+  .panel-bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  /* Stat rows inside panels */
+  .mini-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  .mini-stat {
+    flex: 1;
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.1);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .mini-stat-val {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    line-height: 1;
+  }
+
+  .mini-stat-lbl {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb { background: var(--accent-teal); border-radius: 2px; }
+
+  /* Animated number */
+  .counting { transition: all 0.3s; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 14px;
+    border-top: 1px solid var(--border-glow);
+    margin-top: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-pulse">🏥</div>
+    <div>
+      <div class="header-title">Healthcare Analytics</div>
+      <div class="header-sub">Patient Intelligence System · 2020–2025 Dataset View</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      LIVE DATA
+    </div>
+    <div class="divider-v"></div>
+    <div class="header-stat">
+      <div class="header-stat-val">48,113</div>
+      <div class="header-stat-lbl">Total Patients</div>
+    </div>
+    <div class="divider-v"></div>
+    <div class="header-stat">
+      <div class="header-stat-val">$1.23B</div>
+      <div class="header-stat-lbl">Total Billing</div>
+    </div>
+    <div class="divider-v"></div>
+    <div class="header-stat">
+      <div class="header-stat-val">2020–2025</div>
+      <div class="header-stat-lbl">Data Range</div>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="--kpi-color: var(--accent-cyan)">
+      <span class="kpi-icon">👥</span>
+      <div class="kpi-val">48,113</div>
+      <div class="kpi-lbl">Total Patients</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--accent-green)">
+      <span class="kpi-icon">💰</span>
+      <div class="kpi-val">$1.23B</div>
+      <div class="kpi-lbl">Total Billing</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--accent-amber)">
+      <span class="kpi-icon">📊</span>
+      <div class="kpi-val">$25,515</div>
+      <div class="kpi-lbl">Avg Cost / Patient</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--accent-purple)">
+      <span class="kpi-icon">🔬</span>
+      <div class="kpi-val">33.5%</div>
+      <div class="kpi-lbl">Abnormal Tests</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--accent-pink)">
+      <span class="kpi-icon">🏨</span>
+      <div class="kpi-val">51.6</div>
+      <div class="kpi-lbl">Average Age</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color: var(--accent-teal)">
+      <span class="kpi-icon">🚨</span>
+      <div class="kpi-val">33.2%</div>
+      <div class="kpi-lbl">Emergency Rate</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Line + Donut + Donut -->
+  <div class="charts-row-1">
+
+    <!-- Yearly Trend -->
+    <div class="panel">
+      <div class="panel-bg-grid"></div>
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot"></div>Yearly Admissions Trend</div>
+        <div class="panel-badge">2019 – 2024</div>
+      </div>
+      <canvas id="yearlyChart" class="big-canvas"></canvas>
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-stat-val" style="color:var(--accent-green)">-3.1%</div>
+          <div class="mini-stat-lbl">2020→2021 Change</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-val" style="color:var(--accent-amber)">11,285</div>
+          <div class="mini-stat-lbl">Peak Year (2020)</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-val" style="color:var(--accent-cyan)">5 Yrs</div>
+          <div class="mini-stat-lbl">Data Span</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admission Types -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-amber)"></div>Admission Types</div>
+      </div>
+      <canvas id="admissionChart"></canvas>
+      <div class="progress-list" style="margin-top:16px">
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-name">ELECTIVE</span>
+            <span class="progress-val">16,130</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:33.5%;background:linear-gradient(90deg,#00bcd4,#00e5ff)"></div>
+          </div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-name">URGENT</span>
+            <span class="progress-val">16,030</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:33.3%;background:linear-gradient(90deg,#ffab00,#ffd740)"></div>
+          </div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-name">EMERGENCY</span>
+            <span class="progress-val">15,953</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:33.2%;background:linear-gradient(90deg,#ff4444,#ff7070)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gender Split -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-pink)"></div>Gender Distribution</div>
+      </div>
+      <canvas id="genderChart"></canvas>
+      <div class="mini-stats" style="margin-top:12px">
+        <div class="mini-stat">
+          <div class="mini-stat-val" style="color:#4fc3f7">24,096</div>
+          <div class="mini-stat-lbl">Male (50.08%)</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-val" style="color:var(--accent-pink)">24,017</div>
+          <div class="mini-stat-lbl">Female (49.91%)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Conditions + Insurance + Test Results -->
+  <div class="charts-row-2">
+
+    <!-- Medical Conditions -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-green)"></div>Medical Conditions</div>
+        <div class="panel-badge">6 CONDITIONS</div>
+      </div>
+      <canvas id="conditionsChart"></canvas>
+    </div>
+
+    <!-- Insurance Providers -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-purple)"></div>Insurance Providers</div>
+        <div class="panel-badge">5 PROVIDERS</div>
+      </div>
+      <canvas id="insuranceChart"></canvas>
+    </div>
+
+    <!-- Test Results -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-amber)"></div>Test Results</div>
+      </div>
+      <canvas id="testResultsChart"></canvas>
+      <div class="progress-list" style="margin-top:14px">
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-name">NORMAL</span>
+            <span class="progress-val">16,046 · 33.3%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:33.3%;background:linear-gradient(90deg,#00c853,#00ff88)"></div>
+          </div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-name">ABNORMAL</span>
+            <span class="progress-val">16,136 · 33.5%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:33.5%;background:linear-gradient(90deg,#ff4444,#ff7070)"></div>
+          </div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-header">
+            <span class="progress-name">INCONCLUSIVE</span>
+            <span class="progress-val">15,931 · 33.1%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:33.1%;background:linear-gradient(90deg,#ffab00,#ffd740)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 3: Age Distribution + Blood Types + Medications + Billing -->
+  <div class="charts-row-2">
+
+    <!-- Age Distribution -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-teal)"></div>Age Distribution</div>
+        <div class="panel-badge">AGE 13–89</div>
+      </div>
+      <canvas id="ageChart"></canvas>
+    </div>
+
+    <!-- Blood Types -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-red)"></div>Blood Type Distribution</div>
+        <div class="panel-badge">8 TYPES</div>
+      </div>
+      <canvas id="bloodChart"></canvas>
+    </div>
+
+    <!-- Medications -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-purple)"></div>Medication Usage</div>
+        <div class="panel-badge">5 MEDICATIONS</div>
+      </div>
+      <canvas id="medChart"></canvas>
+    </div>
+
+  </div>
+
+  <!-- ROW 4: Billing by Condition + Monthly Trend -->
+  <div class="charts-row-3">
+
+    <!-- Billing by Condition -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-green)"></div>Average Billing by Condition (USD)</div>
+      </div>
+      <canvas id="billingCondChart"></canvas>
+    </div>
+
+    <!-- Monthly Admissions Trend -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-cyan)"></div>Monthly Admissions Volume (2020–2024)</div>
+      </div>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="footer">HEALTHCARE ANALYTICS DASHBOARD · 48,113 PATIENT RECORDS · DATA RANGE 2020–2025 · ALL RIGHTS RESERVED</div>
+
+<script>
+// Chart.js global defaults
+Chart.defaults.color = '#5a8aaa';
+Chart.defaults.borderColor = 'rgba(0,229,255,0.08)';
+Chart.defaults.font.family = "'Exo 2', sans-serif";
+
+const CYAN   = '#00e5ff';
+const TEAL   = '#00bcd4';
+const GREEN  = '#00ff88';
+const AMBER  = '#ffab00';
+const RED    = '#ff4444';
+const PURPLE = '#b47cff';
+const PINK   = '#ff6eb4';
+const BLUE   = '#4fc3f7';
+
+const glow = (color, alpha=0.15) => color.replace('#','').length === 6
+  ? `rgba(${parseInt(color.slice(1,3),16)},${parseInt(color.slice(3,5),16)},${parseInt(color.slice(5,7),16)},${alpha})`
+  : color;
+
+// ==========================
+// 1. YEARLY TREND (Line)
+// ==========================
+new Chart(document.getElementById('yearlyChart'), {
+  type: 'line',
+  data: {
+    labels: ['2020','2021','2022','2023','2024*','2025*'],
+    datasets: [{
+      label: 'Admissions',
+      data: [11285, 10931, 11017, 11026, 3854, 0],
+      borderColor: CYAN,
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0,0,0,200);
+        g.addColorStop(0, 'rgba(0,229,255,0.25)');
+        g.addColorStop(1, 'rgba(0,229,255,0.01)');
+        return g;
+      },
+      borderWidth: 2.5,
+      pointBackgroundColor: CYAN,
+      pointBorderColor: '#020b18',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      fill: true,
+      tension: 0.4,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString()} patients` } } },
+    scales: {
+      x: { grid: { color: 'rgba(0,229,255,0.06)' }, ticks: { color: '#5a8aaa' } },
+      y: { grid: { color: 'rgba(0,229,255,0.06)' }, ticks: { color: '#5a8aaa', callback: v => v.toLocaleString() } }
+    }
+  }
+});
+
+// ==========================
+// 2. ADMISSION TYPES (Doughnut)
+// ==========================
+new Chart(document.getElementById('admissionChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Elective','Urgent','Emergency'],
+    datasets: [{
+      data: [16130, 16030, 15953],
+      backgroundColor: ['rgba(0,188,212,0.8)', 'rgba(255,171,0,0.8)', 'rgba(255,68,68,0.8)'],
+      borderColor: ['#00bcd4','#ffab00','#ff4444'],
+      borderWidth: 1.5,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '70%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#8bbdd6', padding: 12, font: { size: 11 } } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/55500*100).toFixed(1)}%)` } }
+    }
+  }
+});
+
+// ==========================
+// 3. GENDER (Doughnut)
+// ==========================
+new Chart(document.getElementById('genderChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Male','Female'],
+    datasets: [{
+      data: [24096, 24017],
+      backgroundColor: ['rgba(79,195,247,0.8)', 'rgba(255,110,180,0.8)'],
+      borderColor: ['#4fc3f7','#ff6eb4'],
+      borderWidth: 1.5,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '72%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#8bbdd6', padding: 12, font: { size: 11 } } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/55500*100).toFixed(1)}%)` } }
+    }
+  }
+});
+
+// ==========================
+// 4. MEDICAL CONDITIONS (Horizontal Bar)
+// ==========================
+new Chart(document.getElementById('conditionsChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Arthritis','Diabetes','Hypertension','Obesity','Cancer','Asthma'],
+    datasets: [{
+      label: 'Patients',
+      data: [8107, 8056, 8057, 8052, 7944, 7897],
+      backgroundColor: [
+        'rgba(0,229,255,0.7)','rgba(0,255,136,0.7)','rgba(180,124,255,0.7)',
+        'rgba(255,171,0,0.7)','rgba(255,68,68,0.7)','rgba(0,188,212,0.7)'
+      ],
+      borderColor: [CYAN,GREEN,PURPLE,AMBER,RED,TEAL],
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString()} patients` } }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(0,229,255,0.06)' },
+        ticks: { color: '#5a8aaa', callback: v => (v/1000).toFixed(0)+'k' },
+        min: 7700
+      },
+      y: { grid: { display: false }, ticks: { color: '#8bbdd6' } }
+    }
+  }
+});
+
+// ==========================
+// 5. INSURANCE (Polar Area)
+// ==========================
+new Chart(document.getElementById('insuranceChart'), {
+  type: 'polarArea',
+  data: {
+    labels: ['Cigna','Medicare','UnitedHealthcare','Blue Cross','Aetna'],
+    datasets: [{
+      data: [9730, 9701, 9619, 9590, 9473],
+      backgroundColor: [
+        'rgba(0,229,255,0.6)','rgba(180,124,255,0.6)','rgba(0,255,136,0.6)',
+        'rgba(79,195,247,0.6)','rgba(255,171,0,0.6)'
+      ],
+      borderColor: [CYAN,PURPLE,GREEN,BLUE,AMBER],
+      borderWidth: 1.5,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#8bbdd6', padding: 8, font: { size: 10 } } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()}` } }
+    },
+    scales: {
+      r: {
+        grid: { color: 'rgba(0,229,255,0.08)' },
+        ticks: { display: false },
+        pointLabels: { display: false }
+      }
+    }
+  }
+});
+
+// ==========================
+// 6. TEST RESULTS (Doughnut)
+// ==========================
+new Chart(document.getElementById('testResultsChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Normal','Abnormal','Inconclusive'],
+    datasets: [{
+      data: [16046, 16136, 15931],
+      backgroundColor: ['rgba(0,200,83,0.8)', 'rgba(255,68,68,0.8)', 'rgba(255,171,0,0.8)'],
+      borderColor: [GREEN, RED, AMBER],
+      borderWidth: 1.5,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '68%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()}` } }
+    }
+  }
+});
+
+// ==========================
+// 7. AGE DISTRIBUTION (Bar)
+// ==========================
+new Chart(document.getElementById('ageChart'), {
+  type: 'bar',
+  data: {
+    labels: ['<20','20–30','30–40','40–50','50–60','60–70','70–80','80+'],
+    datasets: [{
+      label: 'Patients',
+      data: [1475, 6863, 7148, 7004, 7250, 7122, 6987, 4264],
+      backgroundColor: (ctx) => {
+        const colors = ['rgba(0,229,255,0.5)','rgba(0,229,255,0.6)','rgba(0,229,255,0.65)',
+          'rgba(0,229,255,0.7)','rgba(0,229,255,0.75)','rgba(0,229,255,0.65)','rgba(0,229,255,0.55)','rgba(0,229,255,0.4)'];
+        return colors[ctx.dataIndex] || 'rgba(0,229,255,0.5)';
+      },
+      borderColor: CYAN,
+      borderWidth: 1,
+      borderRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString()} patients` } }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8bbdd6', font:{size:10} } },
+      y: { grid: { color: 'rgba(0,229,255,0.06)' }, ticks: { color: '#5a8aaa', callback: v => (v/1000)+'k' } }
+    }
+  }
+});
+
+// ==========================
+// 8. BLOOD TYPES (Radar)
+// ==========================
+new Chart(document.getElementById('bloodChart'), {
+  type: 'radar',
+  data: {
+    labels: ['A-','A+','AB+','AB-','B+','B-','O+','O-'],
+    datasets: [{
+      label: 'Patients',
+      data: [6035, 6021, 6026, 5997, 6086, 5960, 6026, 5962],
+      backgroundColor: 'rgba(255,68,68,0.15)',
+      borderColor: RED,
+      borderWidth: 2,
+      pointBackgroundColor: RED,
+      pointBorderColor: '#020b18',
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      r: {
+        angleLines: { color: 'rgba(255,68,68,0.1)' },
+        grid: { color: 'rgba(255,68,68,0.1)' },
+        pointLabels: { color: '#8bbdd6', font: { size: 11 } },
+        ticks: { color: '#5a8aaa', backdropColor: 'transparent', font:{size:9}, callback: v => (v/1000)+'k' }
+      }
+    }
+  }
+});
+
+// ==========================
+// 9. MEDICATIONS (Horizontal Bar)
+// ==========================
+new Chart(document.getElementById('medChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Lipitor','Ibuprofen','Aspirin','Paracetamol','Penicillin'],
+    datasets: [{
+      label: 'Prescriptions',
+      data: [9663, 9718, 9628, 9598, 9506],
+      backgroundColor: [
+        'rgba(180,124,255,0.7)','rgba(0,229,255,0.7)','rgba(255,171,0,0.7)',
+        'rgba(0,255,136,0.7)','rgba(255,110,180,0.7)'
+      ],
+      borderColor: [PURPLE,CYAN,AMBER,GREEN,PINK],
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString()} prescriptions` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(0,229,255,0.06)' }, ticks: { color: '#5a8aaa', callback: v => (v/1000).toFixed(0)+'k' }, min: 9300 },
+      y: { grid: { display: false }, ticks: { color: '#8bbdd6' } }
+    }
+  }
+});
+
+// ==========================
+// 10. BILLING BY CONDITION (Bar)
+// ==========================
+new Chart(document.getElementById('billingCondChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Obesity','Diabetes','Asthma','Hypertension','Arthritis','Cancer'],
+    datasets: [{
+      label: 'Avg Billing ($)',
+      data: [25695, 25585, 25628, 25548, 25490, 25139],
+      backgroundColor: [
+        'rgba(255,171,0,0.7)','rgba(0,229,255,0.7)','rgba(0,188,212,0.7)',
+        'rgba(180,124,255,0.7)','rgba(0,255,136,0.7)','rgba(255,68,68,0.7)'
+      ],
+      borderColor: [AMBER,CYAN,TEAL,PURPLE,GREEN,RED],
+      borderWidth: 1,
+      borderRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` $${ctx.raw.toLocaleString()}` } }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8bbdd6', font:{size:10} } },
+      y: {
+        grid: { color: 'rgba(0,229,255,0.06)' },
+        ticks: { color: '#5a8aaa', callback: v => '$'+v.toLocaleString() },
+        min: 24800
+      }
+    }
+  }
+});
+
+// ==========================
+// 11. MONTHLY TREND (Area)
+// ==========================
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: {
+    labels: ['Jan\'20','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan\'21','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan\'22','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan\'23','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan\'24','Feb','Mar','Apr','May'],
+    datasets: [{
+      label: 'Admissions',
+      data: [950,881,937,924,978,935,1007,1014,904,962,904,889,
+             933,837,969,870,903,926,978,894,867,893,908,953,
+             969,777,938,880,892,970,951,955,919,912,896,958,
+             931,880,922,898,927,961,919,968,920,898,881,921,
+             909,880,906,946,213],
+      borderColor: AMBER,
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0,0,0,180);
+        g.addColorStop(0,'rgba(255,171,0,0.3)');
+        g.addColorStop(1,'rgba(255,171,0,0.01)');
+        return g;
+      },
+      borderWidth: 2,
+      pointBackgroundColor: AMBER,
+      pointBorderColor:'#020b18',
+      pointBorderWidth:2,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      fill: true,
+      tension: 0.35,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw} admissions` } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(0,229,255,0.06)' }, ticks: { color: '#5a8aaa', maxRotation: 45, font:{size:9} } },
+      y: { grid: { color: 'rgba(0,229,255,0.06)' }, ticks: { color: '#5a8aaa' }, min: 0 }
+    }
+  }
+});
+</script>
+</body>
+</html>
